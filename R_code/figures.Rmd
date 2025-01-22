@@ -1,0 +1,811 @@
+Load necessary libraries
+```{r setup}
+library(dplyr)
+library(ggplot2)
+library(cowplot)
+library(gridExtra)
+library(patchwork)
+library(viridis)
+library(writexl)
+library(xlsx)
+library(readxl)
+```
+
+ANALYTICAL REALIZATIONS
+
+First we import data for the exemplars of the analytic realizations. 
+Defined AA, AB, and AC.
+
+```{r}
+setwd("/Users/X/Sample WES Optimization Folder/Theoretical Outputs")
+
+# AA: symmetric dynamics and symmetric costs (interaction 0.01)
+fig_AA_df = read.csv("growth_rates_0,2_0,2_cross_rates_0,01_0,01_arr_rates_0,15_0,15_miss_chance_0.65_c_1_50,0_50,0_c_2_10,0_10,0_c_3_50,0_50,0_gran_1000_init_kick_3max_freq_3.0/isabella_figures.csv") 
+
+# AB: asymmetric WES costs, (0.01)
+fig_AB_df = read.csv("growth_rates_0,2_0,2_cross_rates_0,01_0,01_arr_rates_0,15_0,15_miss_chance_0.65_c_1_200,0_50,0_c_2_10,0_10,0_c_3_50,0_50,0_gran_1000_init_kick_3max_freq_3.0/isabella_figures.csv")
+
+# AC: asymmetric disease dynamics, (0.003)
+fig_AC_df = read.csv('growth_rates_0,4_0,2_cross_rates_0,003_0,003_arr_rates_0,15_0,15_miss_chance_0.65_c_1_50,0_50,0_c_2_10,0_10,0_c_3_50,0_50,0_gran_1000_init_kick_3max_freq_3.0/isabella_figures.csv')
+
+```
+
+And find the respective minima and best response curves for AA-C.
+
+```{r}
+
+# figure AA
+  # best response curve for patch 1
+  min1AA = fig_AA_df %>% 
+    filter(!(patch.one.cost == Inf)) %>% # infinite values are not minima
+    group_by(rate.two) %>%
+    filter(patch.one.cost == min(patch.one.cost)) %>%
+    arrange(rate.two)
+  # best response curve for patch 2
+  min2AA = fig_AA_df %>% 
+    filter(!(patch.two.cost == Inf)) %>%
+    group_by(rate.one) %>%
+    filter(patch.two.cost == min(patch.two.cost)) %>%
+    arrange(rate.one) 
+  # globally optimal strategy
+  minAA = fig_AA_df %>% filter(total.costs == min(total.costs))
+  # manually set reasonable contour break values
+  breaksAA = c(1000, 1200, 1400, 1600, 1750, 2000, 3000, 100000, 420000, Inf)
+  # repeat for AB and AC
+
+# figure AB
+  min1AB = fig_AB_df %>% 
+    filter(!(patch.one.cost == Inf)) %>%
+    group_by(rate.two) %>%
+    filter(patch.one.cost == min(patch.one.cost)) %>%
+    arrange(rate.two)
+  min2AB = fig_AB_df %>% 
+    filter(!(patch.two.cost == Inf)) %>%
+    group_by(rate.one) %>%
+    filter(patch.two.cost == min(patch.two.cost)) %>%
+    arrange(rate.one) 
+  minAB = fig_AB_df %>% filter(total.costs == min(total.costs))
+  breaksAB = c(1900, 2250, 2500, 2750, 3000, 4000, 6000, 12000, 50000, 420000, Inf)
+
+# figure AC
+  min1AC = fig_AC_df %>% 
+    filter(!(patch.one.cost == Inf)) %>%
+    group_by(rate.two) %>%
+    filter(patch.one.cost == min(patch.one.cost)) %>%
+    arrange(rate.two) 
+  min2AC = fig_AC_df %>% 
+    filter(!(patch.two.cost == Inf)) %>%
+    group_by(rate.one) %>%
+    filter(patch.two.cost == min(patch.two.cost)) %>%
+    arrange(rate.one)  
+  minAC = fig_AC_df %>% filter(total.costs == min(total.costs))
+  breaksAC = c(1300, 1400, 1500, 1600, 1700, 1800, 2000, 3000, 4000, 6000, Inf)
+
+```
+
+Figure 1
+
+```{r}
+
+  figAA = ggplot(fig_AA_df, aes(x = rate.one, y = rate.two)) +
+    geom_contour(aes(z = total.costs, color = factor(after_stat(level))), breaks = breaksAA, linewidth = 1) +
+    scale_color_viridis_d(option = "magma") +
+    geom_path(data = min1AA, aes(x = rate.one, y = rate.two), group = 1, color = "black", linewidth = 1, linetype = "dashed") +
+    geom_path(data = min2AA, aes(x = rate.one, y = rate.two), group = 1, color = "black", linewidth = 1, linetype = "dotted") +
+    geom_point(data = minAA, aes(x = rate.one, y = rate.two), color = "red", size = 4, shape = 23, fill = "red") +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    xlim(0, 3) + ylim(0, 3) +
+    labs(x = "testing frequency 1", y = "testing frequency 2")
+
+  figAB = ggplot(fig_AB_df, aes(x = rate.one, y = rate.two)) +
+    geom_contour(aes(z = total.costs, color = factor(after_stat(level))), breaks = breaksAB, linewidth = 1) +
+    scale_color_viridis_d(option = "magma") +
+    geom_path(data = min1AB, aes(x = rate.one, y = rate.two), group = 1, color = "black", linewidth = 1, linetype = "dashed") +
+    geom_path(data = min2AB, aes(x = rate.one, y = rate.two), group = 1, color = "black", linewidth = 1, linetype = "dotted") +
+    geom_point(data = minAB, aes(x = rate.one, y = rate.two), color = "red", size = 4, shape = 23, fill = "red") +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    xlim(0, 3) + ylim(0, 3) +    
+    labs(x = "testing frequency 1", y = "testing frequency 2")
+  
+  figAC = ggplot(fig_AC_df, aes(x = rate.one, y = rate.two)) +
+    geom_contour(aes(z = total.costs, color = factor(after_stat(level))), breaks = breaksAC, linewidth = 1) +
+    scale_color_viridis_d(option = "magma") +
+    geom_path(data = min1AC, aes(x = rate.one, y = rate.two), group = 1, color = "black", linewidth = 1, linetype = "dashed") +
+    geom_path(data = min2AC, aes(x = rate.one, y = rate.two), group = 1, color = "black", linewidth = 1, linetype = "dotted") +
+    geom_point(data = minAC, aes(x = rate.one, y = rate.two), color = "red", size = 4, shape = 23, fill = "red") +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    xlim(0, 3) + ylim(0, 3) +    
+    labs(x = "testing frequency 1", y = "testing frequency 2")
+  
+  figure1 = figAA | figAB | figAC
+
+  setwd("/Users/X/Sample WES Optimization Folder/")
+  ggsave("figure1_R.pdf", figure1, width = 10, height = 4)
+  
+```
+
+NUMERICAL SIMULATIONS
+
+Then we import data from the numerical simulations.
+And we define scenarios A-BB.
+
+```{r}
+setwd("/Users/X/Sample WES Optimization Folder/Revised Simulation Outputs")
+
+# A: asymmetric disease dynamics (interaction 0)
+fig_A_df = read.csv("isabella_[[0.4,0.0],[0.0,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size) 
+# B: asymmetric disease dynamics (interaction 0.001)
+fig_B_df = read.csv("isabella_[[0.4,0.001],[0.001,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size) 
+# C: asymmetric disease dynamics (interaction 0.003)
+fig_C_df = read.csv("isabella_[[0.4,0.003],[0.003,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size) 
+# D: asymmetric disease dynamics (interaction 0.005)
+fig_D_df = read.csv("isabella_[[0.4,0.005],[0.005,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size) 
+# E: asymmetric disease dynamics (interaction 0.01)
+fig_E_df = read.csv("isabella_[[0.4,0.01],[0.01,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size) 
+# BA: asymmetric disease dynamics (interaction 0.05)
+fig_BA_df = read.csv("isabella_[[0.4,0.05],[0.05,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size) 
+# BB: asymmetric disease dynamics (interaction 0.1)
+fig_BB_df = read.csv("isabella_[[0.4,0.1],[0.1,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size) 
+
+# F: symmetric disease dynamics, asymmetric WES costs (interaction 0.)
+fig_F_df = read.csv("isabella_[[0.2,0.0],[0.0,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size)
+# G: symmetric disease dynamics (interaction 0.001)
+fig_G_df = read.csv("isabella_[[0.2,0.001],[0.001,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size)
+# H: symmetric disease dynamics (interaction 0.003)
+fig_H_df = read.csv("isabella_[[0.2,0.003],[0.003,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size)
+# I: symmetric disease dynamics (interaction 0.005)
+fig_I_df = read.csv("isabella_[[0.2,0.005],[0.005,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size)
+# J: symmetric disease dynamics (interaction 0.01)
+fig_J_df = read.csv("isabella_[[0.2,0.01],[0.01,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size)
+# W: symmetric disease dynamics (interaction 0.05)
+fig_W_df = read.csv("isabella_[[0.2,0.05],[0.05,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size)
+# X: symmetric disease dynamics (interaction 0.1)
+fig_X_df = read.csv("isabella_[[0.2,0.1],[0.1,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size)
+
+# K: symmetric disease dynamics, asymmetric disease costs (interaction 0)
+fig_K_df = fig_F_df
+# L: symmetric disease dynamics (interaction 0.001)
+fig_L_df = fig_G_df
+# M: symmetric disease dynamics (interaction 0.003)
+fig_M_df = fig_H_df
+# N: symmetric disease dynamics (interaction 0.005)
+fig_N_df = fig_I_df
+# O: symmetric disease dynamics (interaction 0.01)
+fig_O_df = fig_J_df
+# Y: symmetric disease dynamics (interaction 0.05)
+fig_Y_df = fig_W_df
+# Z: symmetric disease dynamics (interaction 0.1)
+fig_Z_df = fig_X_df
+
+# P: asymmetric disease dynamics, high setup costs (interaction 0)
+fig_P_df = fig_A_df
+# Q: asymmetric disease dynamics (interaction 0.001)
+fig_Q_df = fig_B_df
+# R: asymmetric disease dynamics (interaction 0.003)
+fig_R_df = fig_C_df
+# S: asymmetric disease dynamics (interaction 0.005)
+fig_S_df = fig_D_df
+# T: asymmetric disease dynamics (interaction 0.01)
+fig_T_df = fig_E_df
+
+# asymmetric dynamics 0.002
+fig_V_df = read.csv("isabella_[[0.4,0.002],[0.002,0.2]].csv") %>% mutate(rate.one = Freq1, rate.two = Freq2, tdetection = DetTime, cases.one = Patch1Size, cases.two = Patch2Size)
+
+```
+
+Compute the costs for A-BB.
+```{r}
+# set up a loop
+  # list of letters
+  fignames = LETTERS
+    fignames[27] = "BA"
+    fignames[28] = "BB"
+  # list of figure dfs
+  figdfs = fignames
+    for (i in 1:length(fignames)) {
+      figdfs[i] = paste0("fig_", fignames[i], "_df")
+    }
+
+# set parameter values
+  k.one = 50
+  k.two = 50
+  a.one = 50
+  a.two = 50
+  c.one = 10
+  c.two = 10
+  
+# A-E and V
+  asym = c(1:5, 22, 27, 28)
+  for (i in asym) {
+    df = get(figdfs[i])
+    df = df %>% 
+      mutate(WES.cost.one = k.one + a.one * rate.one * tdetection,
+             WES.cost.two = k.two + a.two * rate.two * tdetection,
+             WES.cost.one = ifelse(rate.one == 0, 0, WES.cost.one),
+             WES.cost.two = ifelse(rate.two == 0, 0, WES.cost.two),
+             
+             dis.cost.one = c.one * cases.one,
+             dis.cost.two = c.two * cases.two,
+             
+             patch.one.cost = WES.cost.one + dis.cost.one,
+             patch.two.cost = WES.cost.two + dis.cost.two,
+             
+             total.costs = patch.one.cost + patch.two.cost,
+             
+             evsi.one = max(dis.cost.one) - dis.cost.one,
+             evsi.two = max(dis.cost.two) - dis.cost.two,
+             evsi = max(dis.cost.one + dis.cost.two) - (dis.cost.one + dis.cost.two),
+             
+             engs.one = evsi.one - WES.cost.one,
+             engs.two = evsi.two - WES.cost.two,
+             engs = evsi - (WES.cost.one + WES.cost.two))
+    assign(figdfs[i], df) 
+  }
+  
+# F-J
+  wes = c(6:10, 23, 24)
+  a.one = 200
+  for (i in wes) {
+    df = get(figdfs[i])
+    df = df %>% 
+      mutate(WES.cost.one = k.one + a.one * rate.one * tdetection,
+             WES.cost.two = k.two + a.two * rate.two * tdetection,
+             WES.cost.one = ifelse(rate.one == 0, 0, WES.cost.one),
+             WES.cost.two = ifelse(rate.two == 0, 0, WES.cost.two),
+             
+             dis.cost.one = c.one * cases.one,
+             dis.cost.two = c.two * cases.two,
+             
+             patch.one.cost = WES.cost.one + dis.cost.one,
+             patch.two.cost = WES.cost.two + dis.cost.two,
+             
+             total.costs = patch.one.cost + patch.two.cost,
+             
+             evsi.one = max(dis.cost.one) - dis.cost.one,
+             evsi.two = max(dis.cost.two) - dis.cost.two,
+             evsi = max(dis.cost.one + dis.cost.two) - (dis.cost.one + dis.cost.two),
+             
+             engs.one = evsi.one - WES.cost.one,
+             engs.two = evsi.two - WES.cost.two,
+             engs = evsi - (WES.cost.one + WES.cost.two))
+    assign(figdfs[i], df) 
+  }
+  
+# K-O
+  dis = c(11:15, 25, 26)
+  a.one = 50
+  c.one = 5
+  for (i in dis) {
+    df = get(figdfs[i])
+    df = df %>% 
+      mutate(WES.cost.one = k.one + a.one * rate.one * tdetection,
+             WES.cost.two = k.two + a.two * rate.two * tdetection,
+             WES.cost.one = ifelse(rate.one == 0, 0, WES.cost.one),
+             WES.cost.two = ifelse(rate.two == 0, 0, WES.cost.two),
+             
+             dis.cost.one = c.one * cases.one,
+             dis.cost.two = c.two * cases.two,
+             
+             patch.one.cost = WES.cost.one + dis.cost.one,
+             patch.two.cost = WES.cost.two + dis.cost.two,
+             
+             total.costs = patch.one.cost + patch.two.cost,
+             
+             evsi.one = max(dis.cost.one) - dis.cost.one,
+             evsi.two = max(dis.cost.two) - dis.cost.two,
+             evsi = max(dis.cost.one + dis.cost.two) - (dis.cost.one + dis.cost.two),
+             
+             engs.one = evsi.one - WES.cost.one,
+             engs.two = evsi.two - WES.cost.two,
+             engs = evsi - (WES.cost.one + WES.cost.two))
+    assign(figdfs[i], df) 
+  }
+
+  
+# P-T
+  c.one = 10
+  k.one = 150
+  k.two = 150
+  for (i in 16:20) {
+    df = get(figdfs[i])
+    df = df %>% 
+      mutate(WES.cost.one = k.one + a.one * rate.one * tdetection,
+             WES.cost.two = k.two + a.two * rate.two * tdetection,
+             WES.cost.one = ifelse(rate.one == 0, 0, WES.cost.one),
+             WES.cost.two = ifelse(rate.two == 0, 0, WES.cost.two),
+             
+             dis.cost.one = c.one * cases.one,
+             dis.cost.two = c.two * cases.two,
+             
+             patch.one.cost = WES.cost.one + dis.cost.one,
+             patch.two.cost = WES.cost.two + dis.cost.two,
+             
+             total.costs = patch.one.cost + patch.two.cost,
+             
+             evsi.one = max(dis.cost.one) - dis.cost.one,
+             evsi.two = max(dis.cost.two) - dis.cost.two,
+             evsi = max(dis.cost.one + dis.cost.two) - (dis.cost.one + dis.cost.two),
+             
+             engs.one = evsi.one - WES.cost.one,
+             engs.two = evsi.two - WES.cost.two,
+             engs = evsi - (WES.cost.one + WES.cost.two))
+    assign(figdfs[i], df) 
+  }  
+  
+  k.one = 50
+  k.two = 50
+  fig_U_df = fig_F_df %>%
+      select(rate.one, rate.two, cases.one, cases.two, tdetection) %>%
+      mutate(WES.cost.one = k.one + a.one * rate.one * tdetection,
+             WES.cost.two = k.two + a.two * rate.two * tdetection,
+             WES.cost.one = ifelse(rate.one == 0, 0, WES.cost.one),
+             WES.cost.two = ifelse(rate.two == 0, 0, WES.cost.two),
+             
+             dis.cost.one = c.one * cases.one,
+             dis.cost.two = c.two * cases.two,
+             
+             patch.one.cost = WES.cost.one + dis.cost.one,
+             patch.two.cost = WES.cost.two + dis.cost.two,
+             
+             total.costs = patch.one.cost + patch.two.cost,
+             
+             evsi.one = max(dis.cost.one) - dis.cost.one,
+             evsi.two = max(dis.cost.two) - dis.cost.two,
+             evsi = max(dis.cost.one + dis.cost.two) - (dis.cost.one + dis.cost.two),
+             
+             engs.one = evsi.one - WES.cost.one,
+             engs.two = evsi.two - WES.cost.two,
+             engs = evsi - (WES.cost.one + WES.cost.two))
+```
+
+And find the respective minima and best response curves for A-BB.
+
+```{r}
+
+for (i in 1:length(figdfs)) {
+    # get the current df
+    df = get(figdfs[i])
+  
+    min1 = df %>% 
+      group_by(rate.two) %>%
+      filter(patch.one.cost == min(patch.one.cost)) %>%
+      arrange(rate.two) 
+  
+    min2 = df %>% 
+      group_by(rate.one) %>%
+      filter(patch.two.cost == min(patch.two.cost)) %>%
+      arrange(rate.one) 
+    
+    min = df %>% filter(total.costs == min(total.costs))
+    
+    assign(paste0("min1", fignames[i]), min1)
+    assign(paste0("min2", fignames[i]), min2)
+    assign(paste0("min", fignames[i]), min)
+      
+  }
+
+# define breaks
+bk = c(2800, 3000, 3300, 3700, 4000, 4500, 5000, 7500, 9000, 10000, 20000)
+
+```
+
+Then generate all panels A-BB.
+
+```{r}
+
+for (i in 1:length(fignames)) {
+    df = get(figdfs[i])
+    
+    min = get(paste0("min", fignames[i]))
+    min1 = get(paste0("min1", fignames[i]))
+    min2 = get(paste0("min2", fignames[i]))
+
+    fig = ggplot(df, aes(x = rate.one, y = rate.two)) +
+      geom_contour(aes(z = total.costs, color = factor(after_stat(level))), breaks = bk, linewidth = 1) +
+      scale_color_viridis_d() +
+      geom_path(data = min1, aes(x = rate.one, y = rate.two), group = 1, color = "black", linewidth = 1, linetype = "dashed") +
+      geom_path(data = min2, aes(x = rate.one, y = rate.two), group = 1, color = "black", linewidth = 1, linetype = "dotted") +
+      geom_point(data = min, aes(x = rate.one, y = rate.two), color = "red", size = 4, shape = 23, fill = "red") +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      labs(x = "testing frequency 1", y = "testing frequency 2")
+    
+    assign(paste0("fig", fignames[i]), fig)
+  
+  }
+
+```
+
+Figure 2: asymmetric disease dynamics
+
+```{r}
+# asymmetric disease dynamics 0.001-0.01
+figure2 = figB | figC | figD | figE
+
+setwd("/Users/X/Sample WES Optimization Folder/")
+ggsave("figure2_R.pdf", figure2, width = 12, height = 4)
+    
+```
+
+Figure 3: asymmetric WES costs
+
+```{r}
+# asymmetric WES costs 0.001-0.1
+figureS2top = figG | figH | figI
+figureS2bot = figJ | figW | figX
+
+setwd("/Users/X/Sample WES Optimization Folder/")
+ggsave("figureS2top_R.pdf", figureS2top, width = 9, height = 4)
+ggsave("figureS2bot_R.pdf", figureS2bot, width = 9, height = 4)
+    
+```
+
+Figure S1: high setup cost dropoff
+
+```{r}
+figureS1top = (figB | figC | figD | figE) 
+figureS1bot = (figQ | figR | figS | figT)
+
+setwd("/Users/X/Sample WES Optimization Folder/")
+ggsave("figureS1top_R.pdf", figureS1top, width = 12, height = 4)
+ggsave("figureS1bot_R.pdf", figureS1bot, width = 12, height = 4)
+    
+```
+
+Figure 3: asymmetric disease cost
+
+```{r}
+figure3top = ( figL | figM | figN ) 
+figure3bot = ( figO | figY + geom_point(data = minY, aes(x = rate.two, y = rate.one), 
+                                         color = "magenta", size = 4, shape = 23, fill = "magenta") | 
+                figZ + geom_point(data = minZ, aes(x = rate.two, y = rate.one), 
+                                  color = "magenta", size = 4, shape = 23, fill = "magenta"))
+
+setwd("/Users/X/Sample WES Optimization Folder/")
+ggsave("figure3_Rtop.pdf", figure3top, width = 9, height = 4)
+ggsave("figure3_Rbot.pdf", figure3bot, width = 9, height = 4)
+    
+```
+
+VALUE OF INFORMATION ANALYSIS
+
+Make dataframes
+```{r}
+# a
+  # choose parameter set
+  figvoiA = c(1:5, 27, 28)
+  nash = numeric(7)
+  voi = list()
+  index = 1
+  
+  # get and assign df of choice
+  for (i in figvoiA) {
+      min1 = get(paste0("min1", fignames[i]))
+      min2 = get(paste0("min2", fignames[i]))
+      df = get(paste0("fig_", fignames[i], "_df"))
+      
+      combine = inner_join(min1, min2, by = c("rate.one", "rate.two", "engs"))
+      nash[index] = combine$engs
+      voi[[index]] = df
+      index = index + 1
+  }
+  
+  
+  figvoiA_df = data.frame(eta = c(0, 0.001, 0.003, 0.005, 0.01, 0.05, 0.1),
+                        min_cost = c(min(voi[[1]]$total.costs), 
+                                     min(voi[[2]]$total.costs), 
+                                     min(voi[[3]]$total.costs), 
+                                     min(voi[[4]]$total.costs), 
+                                     min(voi[[5]]$total.costs), 
+                                     min(voi[[6]]$total.costs), 
+                                     min(voi[[7]]$total.costs)),
+                        max_engs = c(max(voi[[1]]$engs), 
+                                     max(voi[[2]]$engs), 
+                                     max(voi[[3]]$engs), 
+                                     max(voi[[4]]$engs), 
+                                     max(voi[[5]]$engs), 
+                                     max(voi[[6]]$engs), 
+                                     max(voi[[7]]$engs)),
+                        t_detection = c(mean(voi[[1]]$tdetection), 
+                                     mean(voi[[2]]$tdetection), 
+                                     mean(voi[[3]]$tdetection), 
+                                     mean(voi[[4]]$tdetection), 
+                                     mean(voi[[5]]$tdetection), 
+                                     mean(voi[[6]]$tdetection), 
+                                     mean(voi[[7]]$tdetection)),
+                        sum_cases = c(mean(voi[[1]]$cases.one + voi[[1]]$cases.two), 
+                                     mean(voi[[2]]$tdetection + voi[[2]]$cases.two), 
+                                     mean(voi[[3]]$tdetection + voi[[3]]$cases.two), 
+                                     mean(voi[[4]]$tdetection + voi[[4]]$cases.two), 
+                                     mean(voi[[5]]$tdetection + voi[[5]]$cases.two), 
+                                     mean(voi[[6]]$tdetection + voi[[6]]$cases.two), 
+                                     mean(voi[[7]]$tdetection + voi[[7]]$cases.two)),
+                        delta_case = c(mean(abs(voi[[1]]$cases.one - voi[[1]]$cases.two)), 
+                                     mean(abs(voi[[2]]$cases.one - voi[[2]]$cases.two)), 
+                                     mean(abs(voi[[3]]$cases.one - voi[[3]]$cases.two)), 
+                                     mean(abs(voi[[4]]$cases.one - voi[[4]]$cases.two)), 
+                                     mean(abs(voi[[5]]$cases.one - voi[[5]]$cases.two)), 
+                                     mean(abs(voi[[6]]$cases.one - voi[[6]]$cases.two)), 
+                                     mean(abs(voi[[7]]$cases.one - voi[[7]]$cases.two))),
+                        nash_engs = nash) %>%
+            mutate(delta = max_engs - nash_engs)
+
+# b  
+  figvoiB = c(6:10, 23, 24)
+  nash = numeric(7)
+  voi = list()
+  index = 1
+  
+  # get and assign df of choice
+  for (i in figvoiB) {
+      min1 = get(paste0("min1", fignames[i]))
+      min2 = get(paste0("min2", fignames[i]))
+      df = get(paste0("fig_", fignames[i], "_df"))
+      
+      combine = inner_join(min1, min2, by = c("rate.one", "rate.two", "engs"))
+      nash[index] = combine$engs
+      voi[[index]] = df
+      index = index + 1
+  }
+  
+  
+  figvoiB_df = data.frame(eta = c(0, 0.001, 0.003, 0.005, 0.01, 0.05, 0.1),
+                        min_cost = c(min(voi[[1]]$total.costs), 
+                                     min(voi[[2]]$total.costs), 
+                                     min(voi[[3]]$total.costs), 
+                                     min(voi[[4]]$total.costs), 
+                                     min(voi[[5]]$total.costs), 
+                                     min(voi[[6]]$total.costs), 
+                                     min(voi[[7]]$total.costs)),
+                        max_engs = c(max(voi[[1]]$engs), 
+                                     max(voi[[2]]$engs), 
+                                     max(voi[[3]]$engs), 
+                                     max(voi[[4]]$engs), 
+                                     max(voi[[5]]$engs), 
+                                     max(voi[[6]]$engs), 
+                                     max(voi[[7]]$engs)),
+                        t_detection = c(mean(voi[[1]]$tdetection), 
+                                     mean(voi[[2]]$tdetection), 
+                                     mean(voi[[3]]$tdetection), 
+                                     mean(voi[[4]]$tdetection), 
+                                     mean(voi[[5]]$tdetection), 
+                                     mean(voi[[6]]$tdetection), 
+                                     mean(voi[[7]]$tdetection)),
+                      sum_cases = c(mean(voi[[1]]$cases.one + voi[[1]]$cases.two), 
+                                     mean(voi[[2]]$tdetection + voi[[2]]$cases.two), 
+                                     mean(voi[[3]]$tdetection + voi[[3]]$cases.two), 
+                                     mean(voi[[4]]$tdetection + voi[[4]]$cases.two), 
+                                     mean(voi[[5]]$tdetection + voi[[5]]$cases.two), 
+                                     mean(voi[[6]]$tdetection + voi[[6]]$cases.two), 
+                                     mean(voi[[7]]$tdetection + voi[[7]]$cases.two)),
+                        delta_case = c(mean(abs(voi[[1]]$cases.one - voi[[1]]$cases.two)), 
+                                     mean(abs(voi[[2]]$cases.one - voi[[2]]$cases.two)), 
+                                     mean(abs(voi[[3]]$cases.one - voi[[3]]$cases.two)), 
+                                     mean(abs(voi[[4]]$cases.one - voi[[4]]$cases.two)), 
+                                     mean(abs(voi[[5]]$cases.one - voi[[5]]$cases.two)), 
+                                     mean(abs(voi[[6]]$cases.one - voi[[6]]$cases.two)), 
+                                     mean(abs(voi[[7]]$cases.one - voi[[7]]$cases.two))),
+                        nash_engs = nash) %>%
+            mutate(delta = max_engs - nash_engs)
+  
+# c  
+figvoiC = c(11:15, 25, 26)
+  nash = numeric(7)
+  voi = list()
+  index = 1
+  
+  # get and assign df of choice
+  for (i in figvoiC) {
+      min1 = get(paste0("min1", fignames[i]))
+      min2 = get(paste0("min2", fignames[i]))
+      df = get(paste0("fig_", fignames[i], "_df"))
+      
+      combine = inner_join(min1, min2, by = c("rate.one", "rate.two", "engs"))
+      nash[index] = combine$engs
+      voi[[index]] = df
+      index = index + 1
+  }
+  
+  
+  figvoiC_df = data.frame(eta = c(0, 0.001, 0.003, 0.005, 0.01, 0.05, 0.1),
+                        min_cost = c(min(voi[[1]]$total.costs), 
+                                     min(voi[[2]]$total.costs), 
+                                     min(voi[[3]]$total.costs), 
+                                     min(voi[[4]]$total.costs), 
+                                     min(voi[[5]]$total.costs), 
+                                     min(voi[[6]]$total.costs), 
+                                     min(voi[[7]]$total.costs)),
+                        max_engs = c(max(voi[[1]]$engs), 
+                                     max(voi[[2]]$engs), 
+                                     max(voi[[3]]$engs), 
+                                     max(voi[[4]]$engs), 
+                                     max(voi[[5]]$engs), 
+                                     max(voi[[6]]$engs), 
+                                     max(voi[[7]]$engs)),
+                        t_detection = c(mean(voi[[1]]$tdetection), 
+                                     mean(voi[[2]]$tdetection), 
+                                     mean(voi[[3]]$tdetection), 
+                                     mean(voi[[4]]$tdetection), 
+                                     mean(voi[[5]]$tdetection), 
+                                     mean(voi[[6]]$tdetection), 
+                                     mean(voi[[7]]$tdetection)),
+                        delta_case = c(mean(abs(voi[[1]]$cases.one - voi[[1]]$cases.two)), 
+                                     mean(abs(voi[[2]]$cases.one - voi[[2]]$cases.two)), 
+                                     mean(abs(voi[[3]]$cases.one - voi[[3]]$cases.two)), 
+                                     mean(abs(voi[[4]]$cases.one - voi[[4]]$cases.two)), 
+                                     mean(abs(voi[[5]]$cases.one - voi[[5]]$cases.two)), 
+                                     mean(abs(voi[[6]]$cases.one - voi[[6]]$cases.two)), 
+                                     mean(abs(voi[[7]]$cases.one - voi[[7]]$cases.two))),
+                        nash_engs = nash) %>%
+            mutate(delta = max_engs - nash_engs)
+  
+```
+
+Figure 4: VOI in one patch
+
+```{r}
+  
+  voi_df = fig_H_df
+  
+  fig4A_df = voi_df %>%
+    filter(rate.two == 1)
+  
+  fig4A = ggplot(fig4A_df, aes(x = rate.one)) +
+    geom_hline(yintercept = 49990, color = "#fde725", linewidth = 1) +
+    geom_point(aes(y = evsi.one), color = "#1F9E89FF", size = 2) + geom_line(aes(y = evsi.one), color = "#1F9E89FF") +
+    geom_point(aes(y = engs.one), color = "#440154FF", size = 2) + geom_line(aes(y = engs.one), color = "#440154FF") +
+    geom_point(aes(y = WES.cost.one), color = "#6DCD59FF", size = 2) + geom_line(aes(y = WES.cost.one), color = "#6DCD59FF") +
+    geom_vline(xintercept = fig4A_df$rate.one[which.max(fig4A_df$engs.one)], linetype = "dashed", color = "red") +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    labs(x = "testing frequency 1", y = "local costs")
+
+ fig4B_df = voi_df %>%
+   group_by(rate.two) %>%
+   filter(engs.one == max(engs.one))
+ 
+ fig4B = ggplot(fig4B_df, aes(x = rate.two, y = engs.one)) +
+   geom_hline(yintercept = 49990, color = "#fde725", linewidth = 1) +
+   geom_point(color = "#440154FF", size = 2) + geom_line(color = "#440154FF") +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    labs(x = "testing frequency 2", y = "max engs 1")
+ 
+ 
+ figure4 = fig4A + fig4B
+ 
+  setwd("/Users/X/Sample WES Optimization Folder/")
+  ggsave("figure4_R.pdf", figure4, width = 8, height = 4)
+  
+```
+
+Figure 5: VOI in two patches
+```{r}
+
+  fig5C = ggplot(figvoiC_df, aes(x = eta)) +
+      # geom_point(aes(y = min_cost), color = "#3E4A89FF", size = 2) + 
+      # geom_line(aes(y = min_cost), color = "#3E4A89FF") +
+      geom_point(aes(y = max_engs), color = "#1F9E89FF", size = 2) + 
+  geom_line(aes(y = max_engs),color = "#1F9E89FF") +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      labs(x = "interaction constant", y = "max engs")
+
+  fig5B = ggplot(figvoiB_df, aes(x = eta)) +
+      # geom_point(aes(y = min_cost), color = "#3E4A89FF", size = 2) + 
+      # geom_line(aes(y = min_cost), color = "#3E4A89FF") +
+      geom_point(aes(y = max_engs), color = "#1F9E89FF", size = 2) + 
+    geom_line(aes(y = max_engs),color = "#1F9E89FF") +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      labs(x = "interaction constant", y = "max engs")
+  
+  fig5A = ggplot(figvoiA_df, aes(x = eta)) +
+      # geom_point(aes(y = min_cost), color = "#3E4A89FF", size = 2) + 
+      # geom_line(aes(y = min_cost), color = "#3E4A89FF") +
+      geom_point(aes(y = max_engs), color = "#1F9E89FF", size = 2) + 
+      geom_line(aes(y = max_engs),color = "#1F9E89FF") +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      labs(x = "interaction constant", y = "max engs")
+  
+  figure5 = fig5A + fig5B + fig5C
+  
+  setwd("/Users/X/Sample WES Optimization Folder/")
+  ggsave("figure5_R.pdf", figure5, width = 9, height = 4)
+
+```
+
+Figure S3: reflection
+
+```{r}
+
+  figS3 = ggplot(fig4A_df, aes(x = rate.one)) +
+    geom_point(aes(y = engs.one), color = "#1F9E89FF", size = 2) + geom_line(aes(y = engs.one), color = "#1F9E89FF") +
+    geom_point(aes(y = patch.one.cost), color = "#3E4A89FF", size = 2) + geom_line(aes(y = patch.one.cost), color = "#3E4A89FF") +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    labs(x = "testing frequency 1", y = "local costs")
+
+  setwd("/Users/X/Sample WES Optimization Folder/")
+  ggsave("figureS3_R.pdf", figS3, width = 5, height = 4)
+```
+
+Figure S4: avg detection time and delta case
+```{r}
+figureS4A = ggplot() +
+  geom_point(data = figvoiA_df, aes(x = eta, y = t_detection), size = 2, color = "#365D8D") +
+  geom_line(data = figvoiA_df, aes(x = eta, y = t_detection), color = "#365D8D") +
+  geom_point(data = figvoiB_df, aes(x = eta, y = t_detection), size = 2, color = "#47C16E") +
+  geom_line(data = figvoiB_df, aes(x = eta, y = t_detection), color = "#47C16E") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "level of interaction", y = "average time of detection")
+
+figureS4B = ggplot() +
+  geom_point(data = figvoiA_df, aes(x = eta, y = sum_cases), size = 2, color = "#365D8D") +
+  geom_line(data = figvoiA_df, aes(x = eta, y = sum_cases), color = "#365D8D") +
+  geom_point(data = figvoiB_df, aes(x = eta, y = sum_cases), size = 2, color = "#47C16E") +
+  geom_line(data = figvoiB_df, aes(x = eta, y = sum_cases), color = "#47C16E") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "level of interaction", y = "average cases upon detection (both patches)")
+
+figureS4C = ggplot() +
+  geom_point(data = figvoiA_df, aes(x = eta, y = delta_case), size = 2, color = "#365D8D") +
+  geom_line(data = figvoiA_df, aes(x = eta, y = delta_case), color = "#365D8D") +
+  geom_point(data = figvoiB_df, aes(x = eta, y = delta_case), size = 2, color = "#47C16E") +
+  geom_line(data = figvoiB_df, aes(x = eta, y = delta_case), color = "#47C16E") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "level of interaction", y = "average difference between patches")
+
+figureS4 = figureS4A + figureS4B + figureS4C
+
+  setwd("/Users/X/Sample WES Optimization Folder/")
+  ggsave("figureS4_R.pdf", figureS4, width = 10, height = 4)
+
+```
+
+Figure S5: delta
+
+```{r}
+  
+  figS5A = ggplot(figvoiA_df, aes(x = eta, y = delta)) +
+      geom_point(color = "#440154FF", size = 2) + geom_line(color = "#440154FF") +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      labs(x = "interaction constant", y = "Delta (Nash)")
+
+  figS5B = ggplot(figvoiB_df, aes(x = eta, y = delta)) +
+      geom_point(color = "#440154FF", size = 2) + geom_line(color = "#440154FF") +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      labs(x = "interaction constant", y = "Delta (Nash)")
+
+  figS5C = ggplot(figvoiC_df, aes(x = eta, y = delta)) +
+      geom_point(color = "#440154FF", size = 2) + geom_line(color = "#440154FF") +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      labs(x = "interaction constant", y = "Delta (Nash)")
+  
+  figureS5 = figS5A + figS5B + figS5C
+  
+  setwd("/Users/X/Sample WES Optimization Folder/")
+  ggsave("figureS5_R.pdf", figureS5, width = 10, height = 4)
+```
+
+Figure S6: uncoupled
+
+```{r}
+
+figureS6 = figU + figA + figF + figK
+
+  setwd("/Users/X/Sample WES Optimization Folder/")
+  ggsave("figureS6_R.pdf", figureS6, width = 8, height = 8)
+
+
+```
