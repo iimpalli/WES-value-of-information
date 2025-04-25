@@ -6,7 +6,7 @@ This folder contains all Python code needed to replicate the results of
  important_parameters.py. To run the resulting scenarios, simply run process_all_scenarios.py. This file
  imports the code to run uninterrupted epidemics (while marking possible detection points) from
  create_numerical_simulations.py and to analyze all possible two-patch testing strategies from
- testing_analysis.py.
+ testing_analysis.py. The code has also been generalized to function with n patches.
 
  To recreate the figures used in the paper, see the accompanying R code. To prepare data to be
  processed in R, run postprocess_for_R.py.
