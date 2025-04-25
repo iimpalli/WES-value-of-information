@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 import os
-from important_parameters import possible_testing, all_scenarios
+from itertools import product
+from important_parameters import possible_testing, all_scenarios, num_patches
 
 # This code exists purely due to the division of labor of the authors. One author generated simulation results
 # using this Python code, and all visualizations and the analysis of various asymmetries in the cost of
@@ -11,46 +12,49 @@ from important_parameters import possible_testing, all_scenarios
 possible_frequencies = 1.0/possible_testing
 num_frequencies = len(possible_frequencies)
 
-def numpy_to_csv(mean_detect_time, mean_pop_one, mean_pop_two, save_location):
+# how many combinations of testing frequencies are there
+all_strategies = list(product(possible_frequencies, repeat=num_patches))
+strategy_combinations = len(all_strategies)
+
+def numpy_to_csv(mean_detect_time, mean_pops, false_pos_perc, save_location):
     # this will be turned into a dataframe, then exported to a csv file
     row_wise_data = []
     # search through dataframes and collect data for each frequency pair
-    for m in range(0, num_frequencies):
-        for n in range(0, num_frequencies):
-            # form of row determined by agreement between authors for ease of importation into R
-            row = [possible_frequencies[m], possible_frequencies[n],
-                   mean_pop_one[m,n], mean_pop_two[m,n], mean_detect_time[m,n]]
-            row_wise_data.append(row)
+    for i in range(0, strategy_combinations):
+        row = [all_strategies[i][0], all_strategies[i][1],
+               mean_pops[i,0], mean_pops[i,1], mean_detect_time[i], false_pos_perc[i]]
+        row_wise_data.append(row)
 
-    df = pd.DataFrame(row_wise_data, columns=["Freq1", "Freq2", "Patch1Size", "Patch2Size", "DetTime"])
+    # old accumulations, keep until we are sure the new stuff works
+    # for m in range(0, num_frequencies):
+    #     for n in range(0, num_frequencies):
+    #         # form of row determined by agreement between authors for ease of importation into R
+    #         row = [possible_frequencies[m], possible_frequencies[n],
+    #                mean_pop_one[m,n], mean_pop_two[m,n], mean_detect_time[m,n]]
+    #         row_wise_data.append(row)
+
+    df = pd.DataFrame(row_wise_data, columns=["Freq1", "Freq2", "Patch1Size", "Patch2Size", "DetTime","FalsePos%"])
     df.to_csv(save_location)
 
-def process_folder(A, save_to):
-    # find and load associated results
-    r1 = A[0, 0]
-    r2 = A[1, 1]
-    eta_21 = A[0, 1]
-    eta_12 = A[1, 0]
-
+def process_folder(scenario_name, save_to):
     cwd = os.getcwd()
-    foldername = f"simulation_testing_results_[[{r1},{eta_21}],[{eta_12},{r2}]]"
-    load_folder = os.path.join(cwd, foldername)
+    load_folder = os.path.join(cwd, scenario_name)
 
-    mean_pop_one = np.load(os.path.join(load_folder,"mean_pop_one.npy"))
-    mean_pop_two = np.load(os.path.join(load_folder, "mean_pop_two.npy"))
+    mean_pops = np.load(os.path.join(load_folder,"mean_pops.npy"))
     mean_detection_time = np.load(os.path.join(load_folder, "mean_detection_time.npy"))
+    false_pos_perc = np.load(os.path.join(load_folder, "mean_false_pos.npy"))
 
     # output to an R-friendly csv
-    outfile = os.path.join(save_to, f"R_version_of_[[{r1},{eta_21}],[{eta_12},{r2}]].csv")
-    numpy_to_csv(mean_detection_time, mean_pop_one, mean_pop_two, outfile)
+    outfile = os.path.join(save_to, scenario_name)
+    numpy_to_csv(mean_detection_time, mean_pops, false_pos_perc, outfile)
 
 if __name__ == "__main__":
     cwd = os.getcwd()
     # choose a folder for the outputs and fill it in where indicated
-    save_to = os.path.join(cwd, "YOUR_FOLDER_HERE")
+    save_to = os.path.join(cwd, "one_drive_outputs")
     if not os.path.exists(save_to):
         os.makedirs(save_to)
 
-    # modification of scenarios takes place in important_parameters.py
-    for A in all_scenarios:
-        process_folder(A, save_to)
+    scenario_list = ["no_sewage_patch_2_vote_thresh_1_false_pos_2perc"]
+    for scenario_name in scenario_list:
+        process_folder(scenario_name, save_to)

@@ -1,10 +1,12 @@
 import numpy as np
+import random
 from scipy.integrate import odeint
 from scipy.linalg import expm
 import os
 from important_parameters import (num_sims, poisson_rates,
                                   tot_poisson, patch_sizes, final_day, num_WES_samples,
-                                  possible_testing as possible_test_days)
+                                  possible_testing as possible_test_days, possible_tests,
+                                  false_pos_rate, vote_thresh)
 
 # The code in this file is responsible for generating the simulations of uninterrupted epidemics.
 # It also generates "potential detections" at each timestep, based on the current number of infected
@@ -12,35 +14,38 @@ from important_parameters import (num_sims, poisson_rates,
 # testing_analysis.py. Results are saved to the current working directory and labeled with the
 # precise growth matrix used.
 
-def run_scenario(A):
-    # extract elements of matrix in order to label resulting files
-    r1 = A[0,0]
-    r2 = A[1,1]
-    eta_21 = A[0,1]
-    eta_12 = A[1,0]
-
+def run_scenario(A, scenario_name="default"):
     # used to solve linear ODE, can be replaced with exact solution via scipy's expm
     def ode_rhs(y,t):
         return np.matmul(A,np.array(y))
 
     # probability disease arrives in a given patch
     patch_probs = poisson_rates / tot_poisson
-    bernoulli_success = patch_probs[1]  # conduct Bernoulli trial. If successful, patch 1. If fail, patch 0
+    num_patches = len(patch_probs)
 
     # generate initial conditions, numpy uses scale not rate parameter: scale = 1/rate
     arrival_times = np.random.exponential(scale=1/tot_poisson, size=num_sims)
-    arrival_patches = np.random.binomial(size=num_sims, n=1, p=bernoulli_success)
-
-    # possible times to carry out testing, every quarter day since highest frequency in paper is 4/day
-    possible_tests = np.linspace(0,final_day, 4*final_day+1)  # so that quarter days are included
+    arrival_patches = np.zeros(num_sims)
+    # generate actual realizations of multinomial trials, not just counts
+    for i in range(0, num_sims):
+        x = random.random()
+        patch_result = 0
+        prob_sum = patch_probs[0]
+        while prob_sum < x:
+            patch_result += 1
+            prob_sum += patch_probs[patch_result]
+        arrival_patches[i] = patch_result
 
     # to hold key results
-    sim_results = np.zeros((num_sims, len(possible_tests), 2))  # hold simulations for all possible days, default values zero
-    pop_fractions = np.zeros((num_sims, len(possible_tests), 2)) # fraction of patch infected, for disease detection
-    disease_detected = np.zeros((num_sims, len(possible_tests), 2)) # stores "potential detections"
+    sim_results = np.zeros((num_sims, len(possible_tests), num_patches))  # hold simulations for all possible days, default values zero
+    pop_fractions = np.zeros((num_sims, len(possible_tests), num_patches)) # fraction of patch infected, for disease detection
+    disease_detected = np.zeros((num_sims, len(possible_tests), num_patches)) # stores "potential detections"
 
     # generate comparison random numbers, on a 1 per sim per patch per WES sample basis
-    detection_rands = np.random.uniform(size=(num_sims, len(possible_tests), 2, num_WES_samples))
+    detection_rands = np.random.uniform(size=(num_sims, len(possible_tests), num_patches, num_WES_samples))
+
+    # generate false positives
+    false_positive_tests = np.random.uniform(size=(num_sims, len(possible_tests), num_patches, num_WES_samples)) < false_pos_rate
 
     print("Preliminaries completed, running simulations")
 
@@ -50,29 +55,32 @@ def run_scenario(A):
         viable_indices = (possible_tests >= ith_arrival)
         viable_days = possible_tests[viable_indices]
         # set initial condition for ODE based on chosen patch
-        if arrival_patches[i] == 0:
-            init_cond = np.array([1,0])
-        else:
-            init_cond = np.array([0,1])
+        init_cond = np.zeros(num_patches)
+        init_cond[int(arrival_patches[i])] = 1
 
         # fill out remainder of days with solution to ODE
         sim_results[i,viable_indices,:] = odeint(ode_rhs, init_cond, viable_days-ith_arrival)
         # compute fractions, let get bigger than 1 if needed. Simply guarantees detection, as required
-        pop_fractions[i,:,0] = sim_results[i,:,0]/patch_sizes[0]
-        pop_fractions[i,:,1] = sim_results[i,:,1]/patch_sizes[1]
+        for k in range(0, num_patches):
+            pop_fractions[i,:,k] = sim_results[i,:,k]/patch_sizes[k]
 
         # conduct 10 samples, if any of them find disease treat as detection
         for k in range(0, num_WES_samples):
-            disease_detected[i,:,:] = np.maximum((pop_fractions[i,:,:] > detection_rands[i,:,:,k]),disease_detected[i,:,:])
-
+            no_false_pos = (pop_fractions[i, :, :] > detection_rands[i, :, :, k])
+            include_false_pos = np.maximum(false_positive_tests[i,:,:,k], no_false_pos)
+            #disease_detected[i,:,:] = np.maximum(include_false_pos,disease_detected[i,:,:])
+            disease_detected[i,:,:] += include_false_pos.astype(int) # change to ints so we accumulate votes
+        # after accumulating all positive test results, transform entries to a Boolean
+        # by comparing to a threshold. vote_thresh = 0 counts any detected disease
+        disease_detected[i, :, :] = disease_detected[i,:,:] > vote_thresh
 
         # progress report
         if i % 100 == 0:
-            print(f"Completed {i} ODE solutions for scenario [[{r1},{eta_21}],[{eta_12},{r2}]]")
+            print(f"Completed {i} ODE solutions for scenario {scenario_name}")
 
 
     # names for storing results
-    foldername = f"simulation_results_[[{r1},{eta_21}],[{eta_12},{r2}]]"
+    foldername = f"{scenario_name}"
     cwd = os.getcwd()
     save_to = os.path.join(cwd, foldername)
     # if re-running analysis, check to see if directory already exists. Will overwrite previous results

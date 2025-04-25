@@ -12,17 +12,10 @@ from important_parameters import all_scenarios, logfile
 # set up logging file, save in current working directory
 cwd = os.getcwd()
 path_to_log = os.path.join(cwd, logfile)
+scen_name = "no_sewage_patch_2_vote_thresh_1_false_pos_2perc"
+scen_list = [scen_name]
 
 with open(path_to_log, "w") as log:
-    for A in all_scenarios:
-        # extract to find relevant files, as previously
-        r1 = A[0, 0]
-        r2 = A[1, 1]
-        eta_21 = A[0, 1]
-        eta_12 = A[1, 0]
-
-        log.write(f"Beginning work on scenario [[{r1},{eta_21}],[{eta_12},{r2}]]\n")
-        run_scenario(A)
-        log.write(f"Simulations generated for [[{r1},{eta_21}],[{eta_12},{r2}]]\n")
-        test_analysis(A)
-        log.write(f"Analysis of testing strategies on full sample for [[{r1},{eta_21}],[{eta_12},{r2}]] complete\n\n")
+    for curr_scen in scen_list:
+        #run_scenario(all_scenarios[0], scenario_name = scen_name)
+        test_analysis(scenario_name = curr_scen)
