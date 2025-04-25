@@ -12,10 +12,9 @@ from important_parameters import all_scenarios, logfile
 # set up logging file, save in current working directory
 cwd = os.getcwd()
 path_to_log = os.path.join(cwd, logfile)
-scen_name = "no_sewage_patch_2_vote_thresh_1_false_pos_2perc"
-scen_list = [scen_name]
+scen_list = ["PUT SCENARIOS HERE"]
 
 with open(path_to_log, "w") as log:
     for curr_scen in scen_list:
-        #run_scenario(all_scenarios[0], scenario_name = scen_name)
+        run_scenario(all_scenarios[0], scenario_name = scen_name)
         test_analysis(scenario_name = curr_scen)
