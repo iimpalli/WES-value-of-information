@@ -25,14 +25,6 @@ def numpy_to_csv(mean_detect_time, mean_pops, false_pos_perc, save_location):
                mean_pops[i,0], mean_pops[i,1], mean_detect_time[i], false_pos_perc[i]]
         row_wise_data.append(row)
 
-    # old accumulations, keep until we are sure the new stuff works
-    # for m in range(0, num_frequencies):
-    #     for n in range(0, num_frequencies):
-    #         # form of row determined by agreement between authors for ease of importation into R
-    #         row = [possible_frequencies[m], possible_frequencies[n],
-    #                mean_pop_one[m,n], mean_pop_two[m,n], mean_detect_time[m,n]]
-    #         row_wise_data.append(row)
-
     df = pd.DataFrame(row_wise_data, columns=["Freq1", "Freq2", "Patch1Size", "Patch2Size", "DetTime","FalsePos%"])
     df.to_csv(save_location)
 
@@ -55,6 +47,6 @@ if __name__ == "__main__":
     if not os.path.exists(save_to):
         os.makedirs(save_to)
 
-    scenario_list = ["no_sewage_patch_2_vote_thresh_1_false_pos_2perc"]
+    scenario_list = ["PUT SCENARIO NAMES HERE"]
     for scenario_name in scenario_list:
         process_folder(scenario_name, save_to)
