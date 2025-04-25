@@ -43,7 +43,7 @@ def test_analysis(scenario_name="default"):
         one_sim = sim_results[i,:,:]
         one_dd = disease_detected[i,:,:]
 
-        # creates a useful variable to check for false positives
+        # creates a useful variable to check for false positives, if no cases at detection then it is a false positive
         total_cases = np.sum(one_sim, axis=1)
         cases_present = total_cases > 0
 
@@ -98,4 +98,4 @@ def test_analysis(scenario_name="default"):
 if __name__ == "__main__":
     # you can put code here if you want to run this file independently. The authors imported
     # the function above into another script to run the full analysis without stopping
-    test_analysis()
+    pass
