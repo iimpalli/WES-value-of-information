@@ -23,7 +23,8 @@ def test_analysis(scenario_name="default"):
 
     # Recreate grid consisting of every quarter day in simulations
     testing_days = possible_tests
-    # how many combinations of testing frequencies are there
+    # how many combinations of testing frequencies are there, this code lets us generalize beyond having two patches by listing all
+    # combinations of frequencies, similar to a truth table setup
     all_strategies = list(product(possible_testing, repeat=num_patches))
     strategy_combinations = len(all_strategies)
     # Finds index where no testing is done, if present
