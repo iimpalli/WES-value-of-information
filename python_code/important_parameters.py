@@ -17,7 +17,7 @@ tot_poisson = np.sum(poisson_rates)
 false_pos_rate = 0.02
 
 # set patch populations
-patch_sizes = np.array([5000.0*0.085, 5000.0*0.915])
+patch_sizes = np.array([5000.0, 5000.0])
 
 # max days in experiments and list of test periods, decrease number of periods or final_day for
 # faster simulations.
@@ -36,7 +36,7 @@ possible_tests = np.linspace(0,final_day, tests_per_day*final_day+1)  # so that 
 num_WES_samples = 10
 
 # voting threshold
-vote_thresh = 1 # 0 reduces to finding any test that is positive
+vote_thresh = 0 # 0 reduces to finding any test that is positive
 
 # define all scenarios to be run. Examples from the work discussed in the paper are given below.
 # To include a scenario, uncomment it and place it in all_scenarios, or define your own.
@@ -62,4 +62,4 @@ A14 = np.array([[0.2,0.2],[0.2,0.2]])
 all_scenarios = [A14]
 
 # name of log to output readouts for running the full analysis
-logfile = "log_results_w_false_pos.txt"
+logfile = "PUT LOG NAME HERE"
