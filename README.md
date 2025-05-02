@@ -2,4 +2,4 @@
 
 This repository contains code for the manuscript, "Optimal sampling frequency and site selection for wastewater and environmental surveillance of infectious pathogens: a value of information assessment" by Impalli et al.
 
-Python code runs the simulations, and R code implements the cost calculations and generates figures.
+Python code runs the simulations, and R code (as R markdown) implements the cost calculations and generates figures.
